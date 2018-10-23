@@ -68,5 +68,9 @@ target_link_libraries(EfficiencyCalculator Clustering)
 add_executable(DumpSNRate DumpRate.cxx)
 target_link_libraries(DumpSNRate ${ROOT_LIBRARIES})
 
+add_executable(RunNeutronEff RunNeutronEfficiency.cxx)
+target_link_libraries(RunNeutronEff Clustering)
+
+
 # add_executable(OpHitTrigger OpHitTrigger.C)
 # target_link_libraries(OpHitTrigger ${ROOT_LIBRARIES})

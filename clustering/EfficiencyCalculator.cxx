@@ -13,20 +13,22 @@
 #include "TLegend.h"
 #include "TProfile.h"
 #include "TTree.h"
+#include "WireHit.hh"
 
 #include <iostream>
 #include <unistd.h>
 
 int main (int argc, char** argv) {
   int opt;
-  // Shut GetOpt error messages down (return '?'): 
+  // Shut GetOpt error messages down (return '?'):
   extern char *optarg;
   extern int  optopt;
 
   std::string InFileName ="";
-  std::string OutFileName="";
+  std::string OutFileName="OutputEfficiency.pdf";
+  std::string InTreeName ="";
   int nEvent=-1;
-  while ( (opt = getopt(argc, argv, "i:o:n:")) != -1 ) {  // for each option...
+  while ( (opt = getopt(argc, argv, "i:o:n:t:")) != -1 ) {  // for each option...
     switch ( opt ) {
     case 'i':
       InFileName = optarg;
@@ -34,6 +36,9 @@ int main (int argc, char** argv) {
     case 'o':
       OutFileName = optarg;
       break;
+    case 't':
+        InTreeName = optarg;
+        break;
     case 'n':
       nEvent = atoi(optarg);
       break;
@@ -42,102 +47,68 @@ int main (int argc, char** argv) {
       break;
     }
   }
-
+  
   TFile* InFile = new TFile(InFileName.c_str(),"READ");
-  std::map<int,ArbitraryAnaInputManager*> aaim;
-  aaim[1600] = new ArbitraryAnaInputManager();
-  aaim[2000] = new ArbitraryAnaInputManager();
-  aaim[2400] = new ArbitraryAnaInputManager();
-  aaim[2800] = new ArbitraryAnaInputManager();
-  aaim[3200] = new ArbitraryAnaInputManager();
-  aaim[3600] = new ArbitraryAnaInputManager();
-  aaim[4000] = new ArbitraryAnaInputManager();
+  TTree* Tree = (TTree*)InFile->Get(InTreeName.c_str());
+  
+  // DECLARATION OF ALL THE STORAGE VARIABLES
+  int NTotHits;
+  
+  std::vector<int>   * HitView = NULL;
+  std::vector<int>   * HitChan = NULL;
+  std::vector<float> * HitTime = NULL;
+  std::vector<float> * HitSADC = NULL;
+  std::vector<float> * HitRMS  = NULL;
+  
+  
+  // SETTING ALL OF THE BRANCH ADDRESSES
+  Tree->SetBranchAddress("NTotHits"          , &NTotHits          );
+  Tree->SetBranchAddress("HitView"           , &HitView           );
+  Tree->SetBranchAddress("HitChan"           , &HitChan           );
+  Tree->SetBranchAddress("HitTime"           , &HitTime           );
+  Tree->SetBranchAddress("HitSADC"           , &HitSADC           );
+  Tree->SetBranchAddress("HitRMS"            , &HitRMS            );
 
-  aaim[1600]->SetInputTree("arbitrary1600/SimTree");
-  aaim[2000]->SetInputTree("arbitrary2000/SimTree");
-  aaim[2400]->SetInputTree("arbitrary2400/SimTree");
-  aaim[2800]->SetInputTree("arbitrary2800/SimTree");
-  aaim[3200]->SetInputTree("arbitrary3200/SimTree");
-  aaim[3600]->SetInputTree("arbitrary3600/SimTree");
-  aaim[4000]->SetInputTree("arbitrary4000/SimTree");
-
-  for (auto& it: aaim) {
-    it.second->SetInputFile(InFileName);
-    it.second->LoadTree();
-  }
-  std::map<int, TEfficiency*> effEnergy;
-  std::map<int, TProfile*>    nNoiseHit;
-  std::map<int, TProfile*>    nSignalHit;
-  std::map<int, TProfile*>    nNoiseCluster;
-  std::map<int, TProfile*>    nSignalCluster;
-
-  std::map<int, TH2D*>    th2d_nNoiseHit     ;
-  std::map<int, TH2D*>    th2d_nSignalHit    ;
-  std::map<int, TH2D*>    th2d_nNoiseCluster ;
-  std::map<int, TH2D*>    th2d_nSignalCluster;
-
+  
+  // THESE ARE THE OUTPUTS I WANT TO GET FROM THE CODE
+  TProfile* tprof_nClusterVSnNeutron;
+  TH2D*     th2d_nClusterVSnNeutron;
+  double efficiency;
   ClusterEngine clusteng;
   SimpleWireTrigger wiretrigger;
 
+  // NOT SURE WHAT THESE DO, NOT GOING TO WORRY ABOUT IT TOO MUCH
   clusteng.SetTimeWindow   (20);
   clusteng.SetChannelWidth (2);
   clusteng.SetTimeWindowOpt(0.2);
   clusteng.SetPositionOpt  (300);
   clusteng.SetBucketSize   (1);
-      
+  
   wiretrigger.SetNHitsMin    (6);
   wiretrigger.SetNChanMin    (2);
   wiretrigger.SetChanWidthMin(0);
   wiretrigger.SetSADCMin     (0);
 
-  for (auto const& it: aaim) {
-    int fNEvent = nEvent;
-    int adc_threshold = it.first;
-    ArbitraryAnaInputManager* im = it.second;
-    
-    if (fNEvent!=-1) {
-      fNEvent = std::min(fNEvent,(int)im->GetEntries());
-    } else {
-      fNEvent = im->GetEntries();
+  int fNEvent = nEvent;
+  if (fNEvent!=-1) {fNEvent = std::min(fNEvent,(int)Tree->GetEntries());}
+  else             {fNEvent = Tree->GetEntries();}
+  
+  // CONSTRUCTRORS FOR THE VISUAL OUTPUT OF THIS PROGRAM
+  tprof_nClusterVSnNeutron = new TProfile("nSignalCluster", ";electron KE [MeV];nSignalCluster", 10, -0.5, 9.5);
+  th2d_nClusterVSnNeutron  = new TH2D("nSignalCluste_th2" , "Threshold ADC;electron KE [MeV];nSignalCluster;Event", 10, -0.5, 9.5, 10, -0.5, 9.5);
+  th2d_nClusterVSnNeutron->SetStats(0);
+  
+  // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
+  for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
+    Tree->GetEntry(CurrentEvent);
+    std::vector<WireHit*> vec_WireHit;
+
+    for (int j=0; j<HitView->size(); ++j) {
+      WireHit* hit = new WireHit((*HitView)[j], (*HitChan)[j] , (*HitTime)[j],
+                                 (*HitSADC)[j], (*HitRMS)[j]);
+      vec_WireHit.push_back(hit);
     }
     
-    effEnergy     [adc_threshold] = new TEfficiency(Form("Eff_Th%i", adc_threshold),
-                                                    ";electron KE [MeV];Efficiency", 25, 0, 25);
-    nNoiseHit     [adc_threshold] = new TProfile(Form("nNoiseHit_Th%i", adc_threshold),
-                                                 ";electron KE [MeV];nNoiseHit", 25, 0, 25);
-    nSignalHit    [adc_threshold] = new TProfile(Form("nSignalHit_Th%i", adc_threshold),
-                                                 ";electron KE [MeV];nSignalHit", 25, 0, 25);
-    nNoiseCluster [adc_threshold] = new TProfile(Form("nNoiseCluster_Th%i", adc_threshold),
-                                                 ";electron KE [MeV];nNoiseCluster", 25, 0, 25);
-    nSignalCluster[adc_threshold] = new TProfile(Form("nSignalCluster_Th%i", adc_threshold),
-                                                 ";electron KE [MeV];nSignalCluster", 25, 0, 25);
-    th2d_nNoiseHit     [adc_threshold] = new TH2D(Form("nNoiseHit_Th%i_th2", adc_threshold),
-                                                  Form("Threshold %i ADC;electron KE [MeV];nNoiseHit;Event",adc_threshold/100),
-                                                  25, 0, 25, 20, 0, 20);
-    th2d_nSignalHit    [adc_threshold] = new TH2D(Form("nSignalHit_Th%i_th2", adc_threshold),
-                                                  Form("Threshold %i ADC;electron KE [MeV];nSignalHit;Event",adc_threshold/100),
-                                                  25, 0, 25, 20, 0, 20);
-    th2d_nNoiseCluster [adc_threshold] = new TH2D(Form("nNoiseCluster_Th%i_th2", adc_threshold),
-                                                  Form("Threshold %i ADC;electron KE [MeV];nNoiseCluster;Event",adc_threshold/100),
-                                                  25, 0, 25, 20, 0, 20);
-    th2d_nSignalCluster[adc_threshold] = new TH2D(Form("nSignalCluster_Th%i_th2", adc_threshold),
-                                                  Form("Threshold %i ADC;electron KE [MeV];nSignalCluster;Event",adc_threshold/100),
-                                                  25, 0, 25, 20, 0, 20);
-
-    for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
-      im->GetEntry(CurrentEvent);
-      std::vector<WireHit*> vec_WireHit;
-      double nhit[2] = {0,0};
-      for (int j=0; j<im->Hit_View->size(); ++j) {
-        WireHit* hit = new WireHit((*im->Hit_View)[j],        (*im->Hit_True_GenType)[j],  (*im->Hit_Chan)[j],
-                                   (*im->Hit_Time)[j],        (*im->Hit_SADC)[j],          (*im->Hit_RMS)[j],
-                                   (*im->Hit_True_Energy)[j], (*im->Hit_True_EvEnergy)[j], (*im->Hit_True_MainTrID)[j],
-                                   0.5, 0.5, 0.5,
-                                   (*im->Hit_True_X)[j],      (*im->Hit_True_Y)[j],        (*im->Hit_True_Z)[j],
-                                   0, (*im->Hit_True_nElec)[j]);
-        nhit[(*im->Hit_True_GenType)[j]]++;
-        vec_WireHit.push_back(hit);
-      }
       bool selected = false;
       int ncluster = 0;
       int nnoisecluster = 0;
@@ -145,100 +116,21 @@ int main (int argc, char** argv) {
       clusteng.ClusterHits2(vec_WireHit, vec_WireCluster);
       wiretrigger.SetIsSelected(vec_WireCluster);
 
-      for (int c=0; c<vec_WireCluster.size(); ++c) {
-        WireCluster* clust = vec_WireCluster[c];
-        if (clust->GetIsSelected()) {
-          if (clust->GetType()) {
-            selected = true;
-            ++ncluster;
-          } else {
-            ++nnoisecluster;
-          }
-        }
-      }
-
-      double VertStartX = im->True_Prim_VertStartX->at(0);
-      double VertStartY = im->True_Prim_VertStartY->at(0);
-      double VertStartZ = im->True_Prim_VertStartZ->at(0);
-      double VertEndX   = im->True_Prim_VertEndX  ->at(0);
-      double VertEndY   = im->True_Prim_VertEndY  ->at(0);
-      double VertEndZ   = im->True_Prim_VertEndZ  ->at(0);
-      double range = sqrt(( VertStartX - VertEndX ) * ( VertStartX - VertEndX ) +
-                          ( VertStartY - VertEndY ) * ( VertStartY - VertEndY ) +
-                          ( VertStartZ - VertEndZ ) * ( VertStartZ - VertEndZ ));
-     
-      double KE = im->True_Prim_Energy->at(0) * 1000. - 0.511;
-      effEnergy     [adc_threshold]->Fill(selected     , KE);
-      nNoiseHit     [adc_threshold]->Fill(KE, nhit[1]      );
-      nSignalHit    [adc_threshold]->Fill(KE, nhit[0]      );
-      nNoiseCluster [adc_threshold]->Fill(KE, nnoisecluster);
-      nSignalCluster[adc_threshold]->Fill(KE, ncluster     );
-      th2d_nNoiseHit     [adc_threshold]->Fill(KE, nhit[1]      );
-      th2d_nSignalHit    [adc_threshold]->Fill(KE, nhit[0]      );   
-      th2d_nNoiseCluster [adc_threshold]->Fill(KE, nnoisecluster); 
-      th2d_nSignalCluster[adc_threshold]->Fill(KE, ncluster     );
-
-      
-      for (auto& it: vec_WireHit) {
-        delete it;
-        it = NULL;
-      }
-      vec_WireHit.clear();
+//    for (int c=0; c<vec_WireCluster.size(); ++c) {
+//      // Calcuklate the efficiency
+//      // anbd fill the hist and the tProfile
+//      // th2d_nClusterVSnNeutron->Fill(nNeutronGenerated, nClusters);
+//      // tprof_nClusterVSnNeutron->Fill(nNeutronGenerated, nClusters);
+//      }
     }
-  }
 
-  const std::vector<int> color = getColors();
-  int i=0;
-  TLegend* legend = new TLegend(0.1,0.1,0.9,0.9);
-  for (auto const& it: effEnergy) {
-    nNoiseHit     [it.first]->SetStats(0);
-    nSignalHit    [it.first]->SetStats(0);
-    nNoiseCluster [it.first]->SetStats(0);
-    nSignalCluster[it.first]->SetStats(0);
-    effEnergy     [it.first]->SetLineColor  (color.at(i));
-    nNoiseHit     [it.first]->SetLineColor  (color.at(i));
-    nSignalHit    [it.first]->SetLineColor  (color.at(i));
-    nNoiseCluster [it.first]->SetLineColor  (color.at(i));
-    nSignalCluster[it.first]->SetLineColor  (color.at(i));
-    effEnergy     [it.first]->SetMarkerColor(color.at(i));
-    nNoiseHit     [it.first]->SetMarkerColor(color.at(i));
-    nSignalHit    [it.first]->SetMarkerColor(color.at(i));
-    nNoiseCluster [it.first]->SetMarkerColor(color.at(i));
-    nSignalCluster[it.first]->SetMarkerColor(color.at(i));
-    th2d_nNoiseHit     [it.first]->SetStats(0);
-    th2d_nSignalHit    [it.first]->SetStats(0);
-    th2d_nNoiseCluster [it.first]->SetStats(0);
-    th2d_nSignalCluster[it.first]->SetStats(0);    
-    legend->AddEntry(nNoiseCluster[it.first], Form("ADC Threshold = %i",it.first/100), "L");
-    i++;
-  }
+  std::cout << "The efficiency of clustering 1 neutron is:" << efficiency << std::endl;
 
   TCanvas c;
   c.Print((OutFileName+"[").c_str());
-  PlotAll(effEnergy);
+  th2d_nClusterVSnNeutron->Draw("COLZ");
+  tprof_nClusterVSnNeutron->Draw("SAME");
   c.Print(OutFileName.c_str());
-  
-  PlotAll(nNoiseHit);
-  c.Print(OutFileName.c_str());
-
-  PlotAll(nSignalHit);
-  c.Print(OutFileName.c_str());
-
-  PlotAll(nNoiseCluster);
-  c.Print(OutFileName.c_str());
-
-  PlotAll(nSignalCluster);
-  c.Print(OutFileName.c_str());
-
-  c.Clear();
-  legend->Draw();
-  c.Print(OutFileName.c_str());
-
-  gPad->SetRightMargin(1.5*gPad->GetRightMargin());
-  for (auto const& it: th2d_nNoiseHit     ) { it.second->Draw("COLZ"); c.Print(OutFileName.c_str()); }
-  for (auto const& it: th2d_nSignalHit    ) { it.second->Draw("COLZ"); c.Print(OutFileName.c_str()); }
-  for (auto const& it: th2d_nNoiseCluster ) { it.second->Draw("COLZ"); c.Print(OutFileName.c_str()); }
-  for (auto const& it: th2d_nSignalCluster) { it.second->Draw("COLZ"); c.Print(OutFileName.c_str()); }
 
   c.Print((OutFileName+"]").c_str());
   
