@@ -104,8 +104,9 @@ int main (int argc, char** argv) {
     std::vector<WireHit*> vec_WireHit;
 
     for (int j=0; j<HitView->size(); ++j) {
-      WireHit* hit = new WireHit((*HitView)[j], (*HitChan)[j] , (*HitTime)[j],
-                                 (*HitSADC)[j], (*HitRMS)[j]);
+      WireHit* hit = new WireHit((*HitView)[j],             0, (*HitChan)[j],
+                                 (*HitTime)[j], (*HitSADC)[j], (*HitRMS)[j] ,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
       vec_WireHit.push_back(hit);
     }
     
@@ -116,13 +117,27 @@ int main (int argc, char** argv) {
       clusteng.ClusterHits2(vec_WireHit, vec_WireCluster);
       wiretrigger.SetIsSelected(vec_WireCluster);
 
-//    for (int c=0; c<vec_WireCluster.size(); ++c) {
-//      // Calcuklate the efficiency
-//      // anbd fill the hist and the tProfile
-//      // th2d_nClusterVSnNeutron->Fill(nNeutronGenerated, nClusters);
-//      // tprof_nClusterVSnNeutron->Fill(nNeutronGenerated, nClusters);
-//      }
+    for (int c=0; c<vec_WireCluster.size(); ++c) {
+      WireCluster* clust = vec_WireCluster[c];
+      if (clust->GetIsSelected()) {
+        if (clust->GetType()){
+          selected = true;
+          ++ncluster;
+        }
+        else {
+          ++nnoisecluster;
+        }
+      }
+      
+      
+      
+      
+      // Calcuklate the efficiency
+      // anbd fill the hist and the tProfile
+//       th2d_nClusterVSnNeutron ->Fill(nNeutrons, ncluster);
+//       tprof_nClusterVSnNeutron->Fill(nNeutrons, ncluster);
     }
+  }
 
   std::cout << "The efficiency of clustering 1 neutron is:" << efficiency << std::endl;
 
