@@ -24,9 +24,10 @@ int main (int argc, char** argv) {
   extern char *optarg;
   extern int  optopt;
 
-  std::string InFileName ="";
+  std::string InFileName ="/Users/aranborkum/Desktop/SimplePGunAna_hist.root";
   std::string OutFileName="OutputEfficiency.pdf";
-  std::string InTreeName ="";
+  std::string InTreeName ="simplepgunana/PGun";
+  
   int nEvent=-1;
   while ( (opt = getopt(argc, argv, "i:o:n:t:")) != -1 ) {  // for each option...
     switch ( opt ) {
@@ -54,12 +55,15 @@ int main (int argc, char** argv) {
   // DECLARATION OF ALL THE STORAGE VARIABLES
   int NTotHits;
   
-  std::vector<int>   * HitView = NULL;
-  std::vector<int>   * HitChan = NULL;
-  std::vector<float> * HitTime = NULL;
-  std::vector<float> * HitSADC = NULL;
-  std::vector<float> * HitRMS  = NULL;
-  
+  std::vector<int>   * HitView        = NULL;
+  std::vector<int>   * HitChan        = NULL;
+  std::vector<int>   * GenType        = NULL;
+  std::vector<int>   * GenParticleID  = NULL;
+  std::vector<int>   * BackTrackedID  = NULL;
+  std::vector<int>   * GenParticlePDG = NULL;
+  std::vector<float> * HitTime        = NULL;
+  std::vector<float> * HitSADC        = NULL;
+  std::vector<float> * HitRMS         = NULL;
   
   // SETTING ALL OF THE BRANCH ADDRESSES
   Tree->SetBranchAddress("NTotHits"          , &NTotHits          );
@@ -68,54 +72,66 @@ int main (int argc, char** argv) {
   Tree->SetBranchAddress("HitTime"           , &HitTime           );
   Tree->SetBranchAddress("HitSADC"           , &HitSADC           );
   Tree->SetBranchAddress("HitRMS"            , &HitRMS            );
-
-  
+  Tree->SetBranchAddress("GenType"           , &GenType           );
+  Tree->SetBranchAddress("GenParticleID"     , &GenParticleID     );
+  Tree->SetBranchAddress("BackTrackedID"     , &BackTrackedID     );
+  Tree->SetBranchAddress("GenParticlePDG"    , &GenParticlePDG    );
+ 
   // THESE ARE THE OUTPUTS I WANT TO GET FROM THE CODE
-  TProfile* tprof_nClusterVSnNeutron;
-  TH2D*     th2d_nClusterVSnNeutron;
-  double efficiency;
-  ClusterEngine clusteng;
-  SimpleWireTrigger wiretrigger;
+  TProfile*         tprof_nClusterVSnNeutron;
+  TH2D*             th2d_nClusterVSnNeutron ;
+  double            efficiency              ;
+  ClusterEngine     clusteng                ;
+  SimpleWireTrigger wiretrigger             ;
 
   // NOT SURE WHAT THESE DO, NOT GOING TO WORRY ABOUT IT TOO MUCH
-  clusteng.SetTimeWindow   (20);
-  clusteng.SetChannelWidth (2);
+  clusteng.SetTimeWindow   (20) ;
+  clusteng.SetChannelWidth (2)  ;
   clusteng.SetTimeWindowOpt(0.2);
   clusteng.SetPositionOpt  (300);
-  clusteng.SetBucketSize   (1);
+  clusteng.SetBucketSize   (1)  ;
   
   wiretrigger.SetNHitsMin    (6);
   wiretrigger.SetNChanMin    (2);
   wiretrigger.SetChanWidthMin(0);
   wiretrigger.SetSADCMin     (0);
 
+  // THIS SETS UP THE NUMBER OF EVENTS
   int fNEvent = nEvent;
   if (fNEvent!=-1) {fNEvent = std::min(fNEvent,(int)Tree->GetEntries());}
   else             {fNEvent = Tree->GetEntries();}
   
   // CONSTRUCTRORS FOR THE VISUAL OUTPUT OF THIS PROGRAM
-  tprof_nClusterVSnNeutron = new TProfile("nSignalCluster", ";electron KE [MeV];nSignalCluster", 10, -0.5, 9.5);
-  th2d_nClusterVSnNeutron  = new TH2D("nSignalCluste_th2" , "Threshold ADC;electron KE [MeV];nSignalCluster;Event", 10, -0.5, 9.5, 10, -0.5, 9.5);
+  tprof_nClusterVSnNeutron = new TProfile("", "", 10, -0.5, 9.5);
+  th2d_nClusterVSnNeutron  = new TH2D("", "", 10, -0.5, 9.5, 10, -0.5, 9.5);
   th2d_nClusterVSnNeutron->SetStats(0);
   
   // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
   for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
     Tree->GetEntry(CurrentEvent);
+
     std::vector<WireHit*> vec_WireHit;
 
     for (int j=0; j<HitView->size(); ++j) {
-      WireHit* hit = new WireHit((*HitView)[j],             0, (*HitChan)[j],
+      
+      // HERE WE NEED SOMETHING LIKE: IF THE GENPARTICLEID MATCHES THE
+      // BACKTRACKED ID FOR THAT PARTICLE ON THAT ROUND MAKE THE SECOND
+      // ARGUMENT 1, OTHERWISE, IT WILL BE ZERO...
+      
+      WireHit* hit = new WireHit((*HitView)[j], (*GenType)[j], (*HitChan)[j],
                                  (*HitTime)[j], (*HitSADC)[j], (*HitRMS)[j] ,
                                  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
       vec_WireHit.push_back(hit);
     }
     
-      bool selected = false;
-      int ncluster = 0;
-      int nnoisecluster = 0;
+      bool selected      = false;
+      int  ncluster      = 0    ;
+      int  nnoisecluster = 0    ;
+    
       std::vector<WireCluster*> vec_WireCluster;
-      clusteng.ClusterHits2(vec_WireHit, vec_WireCluster);
-      wiretrigger.SetIsSelected(vec_WireCluster);
+    
+      clusteng    .ClusterHits2 (vec_WireHit, vec_WireCluster);
+      wiretrigger .SetIsSelected(vec_WireCluster)             ;
 
     for (int c=0; c<vec_WireCluster.size(); ++c) {
       WireCluster* clust = vec_WireCluster[c];
@@ -127,20 +143,23 @@ int main (int argc, char** argv) {
         else {
           ++nnoisecluster;
         }
+        std::cout << "Cluster: " << ncluster << "\tNoise: " << nnoisecluster << std::endl;
       }
       
       
-      
-      
+    }
+
       // Calcuklate the efficiency
       // anbd fill the hist and the tProfile
-//       th2d_nClusterVSnNeutron ->Fill(nNeutrons, ncluster);
-//       tprof_nClusterVSnNeutron->Fill(nNeutrons, ncluster);
-    }
+       th2d_nClusterVSnNeutron ->Fill(3, nnoisecluster);
+       tprof_nClusterVSnNeutron->Fill(3, nnoisecluster);
+    
   }
+  
+  std::cout << "\nThe efficiency of clustering 1 neutron is:" << efficiency << std::endl;
 
-  std::cout << "The efficiency of clustering 1 neutron is:" << efficiency << std::endl;
-
+  std::cout << std::endl;
+  
   TCanvas c;
   c.Print((OutFileName+"[").c_str());
   th2d_nClusterVSnNeutron->Draw("COLZ");
