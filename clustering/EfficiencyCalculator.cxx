@@ -25,7 +25,7 @@ int main (int argc, char** argv) {
   extern int  optopt;
 
   std::string InFileName ="/Users/aranborkum/Desktop/SimplePGunAna_hist.root";
-  std::string OutFileName="OutputEfficiency.pdf";
+  std::string OutFileName="";
   std::string InTreeName ="simplepgunana/PGun";
   
   int nEvent=-1;
@@ -55,16 +55,28 @@ int main (int argc, char** argv) {
   // DECLARATION OF ALL THE STORAGE VARIABLES
   int NTotHits;
   
-  std::vector<int>   * HitView        = NULL;
-  std::vector<int>   * HitChan        = NULL;
-  std::vector<int>   * GenType        = NULL;
-  std::vector<int>   * GenParticleID  = NULL;
-  std::vector<int>   * BackTrackedID  = NULL;
-  std::vector<int>   * GenParticlePDG = NULL;
-  std::vector<float> * HitTime        = NULL;
-  std::vector<float> * HitSADC        = NULL;
-  std::vector<float> * HitRMS         = NULL;
-  
+  std::vector<int>      * HitView           = NULL;
+  std::vector<int>      * HitChan           = NULL;
+  std::vector<int>      * GenType           = NULL;
+  std::vector<int>      * GenParticleID     = NULL;
+  std::vector<int>      * BackTrackedID     = NULL;
+  std::vector<int>      * GenParticlePDG    = NULL;
+  std::vector<float>    * HitTime           = NULL;
+  std::vector<float>    * HitSADC           = NULL;
+  std::vector<float>    * HitRMS            = NULL;
+  std::vector<float>    * IonizaitonEnergy  = NULL;
+  std::vector<float>    * NumberOfElectrons = NULL;
+  std::vector<float>    * Hit_X             = NULL;
+  std::vector<float>    * Hit_Y             = NULL;
+  std::vector<float>    * Hit_Z             = NULL;
+  std::vector<double>   * GenParticleEnergy = NULL;
+  std::vector<double>   * GenParticleStartX = NULL;
+  std::vector<double>   * GenParticleStartY = NULL;
+  std::vector<double>   * GenParticleStartZ = NULL;
+  std::vector<double>   * GenParticleEndX   = NULL;
+  std::vector<double>   * GenParticleEndY   = NULL;
+  std::vector<double>   * GenParticleEndZ   = NULL;
+
   // SETTING ALL OF THE BRANCH ADDRESSES
   Tree->SetBranchAddress("NTotHits"          , &NTotHits          );
   Tree->SetBranchAddress("HitView"           , &HitView           );
@@ -76,6 +88,18 @@ int main (int argc, char** argv) {
   Tree->SetBranchAddress("GenParticleID"     , &GenParticleID     );
   Tree->SetBranchAddress("BackTrackedID"     , &BackTrackedID     );
   Tree->SetBranchAddress("GenParticlePDG"    , &GenParticlePDG    );
+  Tree->SetBranchAddress("IonizaitonEnergy"  , &IonizaitonEnergy  );
+  Tree->SetBranchAddress("NumberOfElectrons" , &NumberOfElectrons );
+  Tree->SetBranchAddress("GenParticleEnergy" , &GenParticleEnergy );
+  Tree->SetBranchAddress("Hit_X"             , &Hit_X             );
+  Tree->SetBranchAddress("Hit_Y"             , &Hit_Y             );
+  Tree->SetBranchAddress("Hit_Z"             , &Hit_Z             );
+  Tree->SetBranchAddress("GenParticleStartX", &GenParticleStartX  );
+  Tree->SetBranchAddress("GenParticleStartY", &GenParticleStartY  );
+  Tree->SetBranchAddress("GenParticleStartZ", &GenParticleStartZ  );
+  Tree->SetBranchAddress("GenParticleEndX"  , &GenParticleEndX    );
+  Tree->SetBranchAddress("GenParticleEndY"  , &GenParticleEndY    );
+  Tree->SetBranchAddress("GenParticleEndZ"  , &GenParticleEndZ    );
  
   // THESE ARE THE OUTPUTS I WANT TO GET FROM THE CODE
   TProfile*         tprof_nClusterVSnNeutron;
@@ -104,6 +128,7 @@ int main (int argc, char** argv) {
   // CONSTRUCTRORS FOR THE VISUAL OUTPUT OF THIS PROGRAM
   tprof_nClusterVSnNeutron = new TProfile("", "", 10, -0.5, 9.5);
   th2d_nClusterVSnNeutron  = new TH2D("", "", 10, -0.5, 9.5, 10, -0.5, 9.5);
+  
   th2d_nClusterVSnNeutron->SetStats(0);
   
   // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
@@ -118,9 +143,12 @@ int main (int argc, char** argv) {
       // BACKTRACKED ID FOR THAT PARTICLE ON THAT ROUND MAKE THE SECOND
       // ARGUMENT 1, OTHERWISE, IT WILL BE ZERO...
       
-      WireHit* hit = new WireHit((*HitView)[j], (*GenType)[j], (*HitChan)[j],
-                                 (*HitTime)[j], (*HitSADC)[j], (*HitRMS)[j] ,
-                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+      WireHit* hit = new WireHit((*HitView)[j]         , (*GenType)[j]          , (*HitChan)[j]         ,
+                                 (*HitTime)[j]         , (*HitSADC)[j]          , (*HitRMS)[j]          ,
+                                 (*IonizaitonEnergy)[j], (*GenParticleEnergy)[j], (*GenParticleID)[j]   ,
+                                 (*Hit_X)[j]           , (*Hit_Y)[j]            , (*Hit_Z)[j]           ,
+                                 (*GenParticleEndX)[j] , (*GenParticleEndY)[j]  , (*GenParticleEndZ)[j] ,
+                                 0, (*NumberOfElectrons)[j]);
       vec_WireHit.push_back(hit);
     }
     
@@ -143,10 +171,8 @@ int main (int argc, char** argv) {
         else {
           ++nnoisecluster;
         }
-        std::cout << "Cluster: " << ncluster << "\tNoise: " << nnoisecluster << std::endl;
       }
-      
-      
+    std::cout << "Cluster: " << ncluster << "\tNoise: " << nnoisecluster << std::endl;
     }
 
       // Calcuklate the efficiency
