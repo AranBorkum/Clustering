@@ -119,13 +119,13 @@ void ClusterEngine::ClusterHits2_sort(std::vector<WireHit*>& vec_Hits,
                 std::abs(vec_TempHits[j+timeCount]->GetHitTime()-vec_TempHits[j+timeCount+1]->GetHitTime())
                 <=fTimeWindow)
           {
-            if(vec_TempHits[j + timeCount + 1]->GetHitSADC()>fMinHitADC)
+            if(vec_TempHits[j + timeCount + 1]->GetHitSADC()>fMinHitADC){
               vec_TempHits2.push_back(vec_TempHits[j + timeCount + 1]);
+            }
             timeCount++;
           }
 
           j = j + timeCount;
-          std::cout << "Here is a message" << std::endl;
           vec_Clusters.push_back(new WireCluster(vec_TempHits2));
           vec_TempHits2.clear();
           //fVecClusters.push_back(temp);

@@ -9,9 +9,12 @@
 #include "TEfficiency.h"
 #include "TFile.h"
 #include "TPad.h"
+#include "TH1D.h"
 #include "TH2D.h"
 #include "TLegend.h"
 #include "TProfile.h"
+#include "TGraph.h"
+#include "TLine.h"
 #include "TTree.h"
 #include "WireHit.hh"
 
@@ -25,11 +28,12 @@ int main (int argc, char** argv) {
   extern int  optopt;
 
   std::string InFileName ="/Users/aranborkum/Desktop/SimplePGunAna_hist.root";
-  std::string OutFileName="";
+  std::string OutFileName="Output_1.pdf";
   std::string InTreeName ="simplepgunana/PGun";
   
   int nEvent=-1;
-  while ( (opt = getopt(argc, argv, "i:o:n:t:")) != -1 ) {  // for each option...
+  int nHitTrials;
+  while ( (opt = getopt(argc, argv, "i:o:n:t:l:")) != -1 ) {  // for each option...
     switch ( opt ) {
     case 'i':
       InFileName = optarg;
@@ -42,6 +46,9 @@ int main (int argc, char** argv) {
         break;
     case 'n':
       nEvent = atoi(optarg);
+      break;
+    case 'l':
+      nHitTrials = atoi(optarg);
       break;
     case '?':  // unknown option...
       std::cerr << "Unknown option: '" << char(optopt) << "'!" << std::endl;
@@ -100,99 +107,121 @@ int main (int argc, char** argv) {
   Tree->SetBranchAddress("GenParticleEndX"  , &GenParticleEndX    );
   Tree->SetBranchAddress("GenParticleEndY"  , &GenParticleEndY    );
   Tree->SetBranchAddress("GenParticleEndZ"  , &GenParticleEndZ    );
- 
+//  Tree->SetBranchAddress("Index"             , &GenType           ); //
+
   // THESE ARE THE OUTPUTS I WANT TO GET FROM THE CODE
   TProfile*         tprof_nClusterVSnNeutron;
   TH2D*             th2d_nClusterVSnNeutron ;
-  double            efficiency              ;
   ClusterEngine     clusteng                ;
   SimpleWireTrigger wiretrigger             ;
-
-  // NOT SURE WHAT THESE DO, NOT GOING TO WORRY ABOUT IT TOO MUCH
-  clusteng.SetTimeWindow   (20) ;
-  clusteng.SetChannelWidth (2)  ;
-  clusteng.SetTimeWindowOpt(0.2);
-  clusteng.SetPositionOpt  (300);
-  clusteng.SetBucketSize   (1)  ;
   
-  wiretrigger.SetNHitsMin    (6);
-  wiretrigger.SetNChanMin    (2);
-  wiretrigger.SetChanWidthMin(0);
-  wiretrigger.SetSADCMin     (0);
+  int x[nHitTrials], y[nHitTrials];
+  double efficiency[nHitTrials]   ;
 
-  // THIS SETS UP THE NUMBER OF EVENTS
-  int fNEvent = nEvent;
-  if (fNEvent!=-1) {fNEvent = std::min(fNEvent,(int)Tree->GetEntries());}
-  else             {fNEvent = Tree->GetEntries();}
+  for (int i=0; i<nHitTrials; ++i){
+    // NOT SURE WHAT THESE DO, NOT GOING TO WORRY ABOUT IT TOO MUCH
+    clusteng.SetTimeWindow   (20) ;
+    clusteng.SetChannelWidth (2)  ;
+    clusteng.SetTimeWindowOpt(0.2);
+    clusteng.SetPositionOpt  (300);
+    clusteng.SetBucketSize   (1)  ;
   
-  // CONSTRUCTRORS FOR THE VISUAL OUTPUT OF THIS PROGRAM
-  tprof_nClusterVSnNeutron = new TProfile("", "", 10, -0.5, 9.5);
-  th2d_nClusterVSnNeutron  = new TH2D("", "", 10, -0.5, 9.5, 10, -0.5, 9.5);
-  
-  th2d_nClusterVSnNeutron->SetStats(0);
-  
-  // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
-  for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
-    Tree->GetEntry(CurrentEvent);
+    wiretrigger.SetNHitsMin    (i); //efficiency vs this plot, 6 is the nominal
+    wiretrigger.SetNChanMin    (2);
+    wiretrigger.SetChanWidthMin(0);
+    wiretrigger.SetSADCMin     (0);
 
-    std::vector<WireHit*> vec_WireHit;
+    // THIS SETS UP THE NUMBER OF EVENTS
+    int fNEvent = nEvent;
+    if (fNEvent!=-1) {fNEvent = std::min(fNEvent,(int)Tree->GetEntries());}
+    else             {fNEvent = Tree->GetEntries();}
+  
+    // CONSTRUCTRORS FOR THE VISUAL OUTPUT OF THIS PROGRAM
+    tprof_nClusterVSnNeutron = new TProfile("", "", 10, -0.5, 9.5);
+    th2d_nClusterVSnNeutron  = new TH2D("", "", 10, -0.5, 9.5, 10, -0.5, 9.5);
+    int totalNumberOfClusters = 0;
+    th2d_nClusterVSnNeutron->SetStats(0);
+  
+    // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
+    for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
+      Tree->GetEntry(CurrentEvent);
+      std::vector<WireHit*> vec_WireHit;
 
-    for (int j=0; j<HitView->size(); ++j) {
-      
-      // HERE WE NEED SOMETHING LIKE: IF THE GENPARTICLEID MATCHES THE
-      // BACKTRACKED ID FOR THAT PARTICLE ON THAT ROUND MAKE THE SECOND
-      // ARGUMENT 1, OTHERWISE, IT WILL BE ZERO...
-      
-      WireHit* hit = new WireHit((*HitView)[j]         , (*GenType)[j]          , (*HitChan)[j]         ,
-                                 (*HitTime)[j]         , (*HitSADC)[j]          , (*HitRMS)[j]          ,
-                                 (*IonizaitonEnergy)[j], (*GenParticleEnergy)[j], (*GenParticleID)[j]   ,
-                                 (*Hit_X)[j]           , (*Hit_Y)[j]            , (*Hit_Z)[j]           ,
-                                 (*GenParticleEndX)[j] , (*GenParticleEndY)[j]  , (*GenParticleEndZ)[j] ,
-                                 0, (*NumberOfElectrons)[j]);
-      vec_WireHit.push_back(hit);
-    }
-    
+      for (int j=0; j<HitView->size(); ++j) {
+        
+        // HERE WE NEED SOMETHING LIKE: IF THE GENPARTICLEID MATCHES THE
+        // BACKTRACKED ID FOR THAT PARTICLE ON THAT ROUND MAKE THE SECOND
+        // ARGUMENT 1, OTHERWISE, IT WILL BE ZERO...
+        
+        WireHit* hit = new WireHit((*HitView)[j], 1            , (*HitChan)[j],
+                                   (*HitTime)[j], (*HitSADC)[j], (*HitRMS)[j] ,
+                                   0            , 0            , 0            ,
+                                   0            , 0            , 0            ,
+                                   0            , 0            , 0            ,
+                                   0/* index here*/            , 0           );
+        vec_WireHit.push_back(hit);
+      }
+
       bool selected      = false;
       int  ncluster      = 0    ;
       int  nnoisecluster = 0    ;
     
       std::vector<WireCluster*> vec_WireCluster;
-    
       clusteng    .ClusterHits2 (vec_WireHit, vec_WireCluster);
       wiretrigger .SetIsSelected(vec_WireCluster)             ;
 
-    for (int c=0; c<vec_WireCluster.size(); ++c) {
-      WireCluster* clust = vec_WireCluster[c];
-      if (clust->GetIsSelected()) {
-        if (clust->GetType()){
-          selected = true;
-          ++ncluster;
-        }
-        else {
-          ++nnoisecluster;
+      for (int c=0; c<vec_WireCluster.size(); ++c) {
+        WireCluster* clust = vec_WireCluster[c];
+        if (clust->GetIsSelected()) {
+          if (clust->GetType()){
+            selected = true;
+            ++ncluster;
+          }
+          else {
+            ++nnoisecluster;
+          }
         }
       }
-    std::cout << "Cluster: " << ncluster << "\tNoise: " << nnoisecluster << std::endl;
+    
+    totalNumberOfClusters+=ncluster;
+    // Calcuklate the efficiency
+    // anbd fill the hist and the tProfile
+    th2d_nClusterVSnNeutron ->Fill(3, ncluster);
+    tprof_nClusterVSnNeutron->Fill(3, ncluster);
+      
     }
 
-      // Calcuklate the efficiency
-      // anbd fill the hist and the tProfile
-       th2d_nClusterVSnNeutron ->Fill(3, nnoisecluster);
-       tprof_nClusterVSnNeutron->Fill(3, nnoisecluster);
+    x[i] = i;
+    y[i] = totalNumberOfClusters;
+    efficiency[i] = static_cast<double>(totalNumberOfClusters)/static_cast<double>(3*nEvent);
     
   }
   
-  std::cout << "\nThe efficiency of clustering 1 neutron is:" << efficiency << std::endl;
-
-  std::cout << std::endl;
+  TCanvas *c = new TCanvas();
+  TGraph  *g = new TGraph (nHitTrials, x, y   );
+  TLine   *l = new TLine  (3, 0, 3, 2500      );
+  TLegend *L = new TLegend(0.52, 0.7, 0.9, 0.9);
   
-  TCanvas c;
-  c.Print((OutFileName+"[").c_str());
-  th2d_nClusterVSnNeutron->Draw("COLZ");
-  tprof_nClusterVSnNeutron->Draw("SAME");
-  c.Print(OutFileName.c_str());
-
-  c.Print((OutFileName+"]").c_str());
+  L->SetHeader("This is the Legend", "C");
+  L->AddEntry (l, "number of neutrons produced per event");
+  L->AddEntry (g, "number of clusters vs minimum number of hits");
+  
+  l->SetLineColor(kRed);
+  c->Print((OutFileName+"[").c_str());
+  g            ->SetTitle(""             );
+  g->GetXaxis()->SetTitle("nHitsMin [#]" );
+  g->GetYaxis()->SetTitle("nClusters [#]");
+  g->Draw("AL*");
+  l->Draw();
+  L->Draw();
+  c->Print((OutFileName).c_str());
+  c->Print((OutFileName+"]").c_str());
+//  TCanvas c;
+//  c.Print((OutFileName+"[").c_str());
+//  th2d_nClusterVSnNeutron->Draw("COLZ");
+//  tprof_nClusterVSnNeutron->Draw("SAME");
+//  c.Print(OutFileName.c_str());
+//  c.Print((OutFileName+"]").c_str());
   
 }
 
