@@ -116,7 +116,7 @@ int main (int argc, char** argv) {
   SimpleWireTrigger wiretrigger             ;
   
   int x[nHitTrials], y[nHitTrials];
-  double efficiency[nHitTrials]   ;
+  double x1[nHitTrials], efficiency[nHitTrials]   ;
 
   for (int i=0; i<nHitTrials; ++i){
     // NOT SURE WHAT THESE DO, NOT GOING TO WORRY ABOUT IT TOO MUCH
@@ -193,29 +193,53 @@ int main (int argc, char** argv) {
 
     x[i] = i;
     y[i] = totalNumberOfClusters;
+    x1[i] = static_cast<double>(i);
     efficiency[i] = static_cast<double>(totalNumberOfClusters)/static_cast<double>(3*nEvent);
     
   }
   
-  TCanvas *c = new TCanvas();
-  TGraph  *g = new TGraph (nHitTrials, x, y   );
-  TLine   *l = new TLine  (3, 0, 3, 2500      );
-  TLegend *L = new TLegend(0.52, 0.7, 0.9, 0.9);
+  TCanvas *c1 = new TCanvas();
+  TCanvas *c2 = new TCanvas();
+  TGraph  *g1 = new TGraph (nHitTrials, x , y         );
+  TGraph  *g2 = new TGraph (nHitTrials, x1, efficiency);
+  TLine   *l1 = new TLine  (3, 0, 3, 2500             );
+  TLine   *l2 = new TLine  (6, 0, 6, 0.9              );
+  TLegend *legend1 = new TLegend(0.52, 0.7, 0.9, 0.9  );
+  TLegend *legend2 = new TLegend(0.52, 0.7, 0.9, 0.9  );
+
+//  legend1->SetHeader("This is the Legend", "C");
+//  legend1->AddEntry (l1, "number of neutrons produced per event");
+//  legend1->AddEntry (g1, "number of clusters vs minimum number of hits");
+//
+//  l1->SetLineColor(kRed);
+//  c1->Print((OutFileName+"[").c_str());
+//  g1->SetTitle("");
+//  g1->GetXaxis()->SetTitle("nHitsMin [#]" );
+//  g1->GetYaxis()->SetTitle("nClusters [#]");
+//  g1->Draw("AL*");
+//  l1->Draw();
+//  legend1->Draw();
+//  c1->Print((OutFileName).c_str());
+//  c1->Print((OutFileName+"]").c_str());
+//
+//  legend2->AddEntry(g2, "efficiency vs minimum number of hits");
+//  legend2->AddEntry(l2, "nominal number of hits");
+//
+//  c2->Print((OutFileName+"[").c_str());
+//  c2->SetLogy();
+//  g2->SetTitle("");
+//  g2->GetXaxis()->SetTitle("nHitsMin [#]");
+//  g2->GetYaxis()->SetTitle("Efficiency");
+//  g2->Draw("AL*");
+//  l2->SetLineColor(kRed);
+//  l2->Draw();
+//  legend2->Draw();
+//  c2->Print((OutFileName).c_str());
+//  c2->Print((OutFileName+"]").c_str());
   
-  L->SetHeader("This is the Legend", "C");
-  L->AddEntry (l, "number of neutrons produced per event");
-  L->AddEntry (g, "number of clusters vs minimum number of hits");
   
-  l->SetLineColor(kRed);
-  c->Print((OutFileName+"[").c_str());
-  g            ->SetTitle(""             );
-  g->GetXaxis()->SetTitle("nHitsMin [#]" );
-  g->GetYaxis()->SetTitle("nClusters [#]");
-  g->Draw("AL*");
-  l->Draw();
-  L->Draw();
-  c->Print((OutFileName).c_str());
-  c->Print((OutFileName+"]").c_str());
+  
+  
 //  TCanvas c;
 //  c.Print((OutFileName+"[").c_str());
 //  th2d_nClusterVSnNeutron->Draw("COLZ");
