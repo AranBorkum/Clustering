@@ -32,7 +32,7 @@ int main (int argc, char** argv) {
   std::string InTreeName ="simplepgunana/PGun";
   
   int nEvent=-1;
-  int nHitTrials;
+  int nHitTrials=10;
   while ( (opt = getopt(argc, argv, "i:o:n:t:l:")) != -1 ) {  // for each option...
     switch ( opt ) {
     case 'i':
@@ -68,6 +68,7 @@ int main (int argc, char** argv) {
   std::vector<int>      * GenParticleID     = NULL;
   std::vector<int>      * BackTrackedID     = NULL;
   std::vector<int>      * GenParticlePDG    = NULL;
+  std::vector<int>      * FinalLocation     = NULL;
   std::vector<float>    * HitTime           = NULL;
   std::vector<float>    * HitSADC           = NULL;
   std::vector<float>    * HitRMS            = NULL;
@@ -107,6 +108,7 @@ int main (int argc, char** argv) {
   Tree->SetBranchAddress("GenParticleEndX"  , &GenParticleEndX    );
   Tree->SetBranchAddress("GenParticleEndY"  , &GenParticleEndY    );
   Tree->SetBranchAddress("GenParticleEndZ"  , &GenParticleEndZ    );
+  Tree->SetBranchAddress("FinalLocation"    , &FinalLocation      );
 //  Tree->SetBranchAddress("Index"             , &GenType           ); //
 
   // THESE ARE THE OUTPUTS I WANT TO GET FROM THE CODE
@@ -114,10 +116,20 @@ int main (int argc, char** argv) {
   TH2D*             th2d_nClusterVSnNeutron ;
   ClusterEngine     clusteng                ;
   SimpleWireTrigger wiretrigger             ;
-  
+
+  int EventTally = 0;
   int x[nHitTrials], y[nHitTrials];
   double x1[nHitTrials], efficiency[nHitTrials]   ;
-
+  
+  for (int i=0; i<Tree->GetEntries(); ++i) {
+    Tree->GetEntry(i);
+    for (int it=0; it<FinalLocation->size(); ++it) {
+      if ((*FinalLocation)[it] == 1) { EventTally++; }
+    }
+  }
+  
+  nEvent = EventTally;
+  
   for (int i=0; i<nHitTrials; ++i){
     // NOT SURE WHAT THESE DO, NOT GOING TO WORRY ABOUT IT TOO MUCH
     clusteng.SetTimeWindow   (20) ;
@@ -141,14 +153,14 @@ int main (int argc, char** argv) {
     th2d_nClusterVSnNeutron  = new TH2D("", "", 10, -0.5, 9.5, 10, -0.5, 9.5);
     int totalNumberOfClusters = 0;
     th2d_nClusterVSnNeutron->SetStats(0);
-  
+        
     // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
     for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
       Tree->GetEntry(CurrentEvent);
       std::vector<WireHit*> vec_WireHit;
-
+      
       for (int j=0; j<HitView->size(); ++j) {
-        
+    
         // HERE WE NEED SOMETHING LIKE: IF THE GENPARTICLEID MATCHES THE
         // BACKTRACKED ID FOR THAT PARTICLE ON THAT ROUND MAKE THE SECOND
         // ARGUMENT 1, OTHERWISE, IT WILL BE ZERO...
@@ -199,15 +211,10 @@ int main (int argc, char** argv) {
   }
   
   TCanvas *c1 = new TCanvas();
-  TCanvas *c2 = new TCanvas();
   TGraph  *g1 = new TGraph (nHitTrials, x , y         );
-  TGraph  *g2 = new TGraph (nHitTrials, x1, efficiency);
   TLine   *l1 = new TLine  (3, 0, 3, 2500             );
-  TLine   *l2 = new TLine  (6, 0, 6, 0.9              );
   TLegend *legend1 = new TLegend(0.52, 0.7, 0.9, 0.9  );
-  TLegend *legend2 = new TLegend(0.52, 0.7, 0.9, 0.9  );
 
-//  legend1->SetHeader("This is the Legend", "C");
 //  legend1->AddEntry (l1, "number of neutrons produced per event");
 //  legend1->AddEntry (g1, "number of clusters vs minimum number of hits");
 //
@@ -221,7 +228,13 @@ int main (int argc, char** argv) {
 //  legend1->Draw();
 //  c1->Print((OutFileName).c_str());
 //  c1->Print((OutFileName+"]").c_str());
-//
+
+  
+//  TCanvas *c2 = new TCanvas();
+//  TGraph  *g2 = new TGraph (nHitTrials, x1, efficiency);
+//  TLine   *l2 = new TLine  (6, 0, 6, 0.9              );
+//  TLegend *legend2 = new TLegend(0.52, 0.7, 0.9, 0.9  );
+  
 //  legend2->AddEntry(g2, "efficiency vs minimum number of hits");
 //  legend2->AddEntry(l2, "nominal number of hits");
 //
