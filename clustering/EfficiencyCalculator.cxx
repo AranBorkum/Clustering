@@ -29,7 +29,7 @@ int main (int argc, char** argv) {
 
   std::string InFileName ="/Users/aranborkum/Docterate/DataSets/1000_tri_Neutron_events.root";
   std::string OutFileName="Output_1.pdf";
-  std::string InTreeName ="simplepgunana/PGun";
+  std::string InTreeName ="trineutronbackground/TriNeutron";
   
   int nEvent=1000;
   int nHitTrials=1;
@@ -61,6 +61,9 @@ int main (int argc, char** argv) {
   
   // DECLARATION OF ALL THE STORAGE VARIABLES
   int NTotHits;
+  double binning[8];
+  double clusters[8];
+  double efficiency[8];
   
   std::vector<int>      * HitView           = NULL;
   std::vector<int>      * HitChan           = NULL;
@@ -84,6 +87,7 @@ int main (int argc, char** argv) {
   std::vector<double>   * GenParticleEndX   = NULL;
   std::vector<double>   * GenParticleEndY   = NULL;
   std::vector<double>   * GenParticleEndZ   = NULL;
+  std::vector<double>   * NeutOneX          = NULL;
 
   // SETTING ALL OF THE BRANCH ADDRESSES
   Tree->SetBranchAddress("NTotHits"          , &NTotHits          );
@@ -109,6 +113,7 @@ int main (int argc, char** argv) {
   Tree->SetBranchAddress("GenParticleEndY"  , &GenParticleEndY    );
   Tree->SetBranchAddress("GenParticleEndZ"  , &GenParticleEndZ    );
   Tree->SetBranchAddress("EventIndex"       , &EventIndex         );
+  Tree->SetBranchAddress("NeutOneX"         , &NeutOneX           );
 //  Tree->SetBranchAddress("Index"             , &GenType           ); //
 
   // THESE ARE THE OUTPUTS I WANT TO GET FROM THE CODE
@@ -116,7 +121,7 @@ int main (int argc, char** argv) {
 //  TH2D *th2d_nClusterVSnNeutron      = new TH2D("", "", 10, -0.5, 9.5, 10, -0.5, 9.5);
 //  th2d_nClusterVSnNeutron->SetStats(0);
 
-  for (int i=0; i<10; ++i){
+  for (int i=0; i<8; ++i){
     ClusterEngine                        clusteng;
     SimpleWireTrigger                    wiretrigger;
     
@@ -141,12 +146,11 @@ int main (int argc, char** argv) {
     if (fNEvent!=-1) {fNEvent = std::min(fNEvent,(int)Tree->GetEntries());}
     else             {fNEvent = Tree->GetEntries();}
 
-    bool cheat = true;
     // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
-    for (int CurrentEvent=18; CurrentEvent<19; ++CurrentEvent){//fNEvent; ++CurrentEvent) {
+    for (int CurrentEvent=18; CurrentEvent<fNEvent; ++CurrentEvent) {
       Tree->GetEntry(CurrentEvent);
       
-      if (cheat) {
+      if ((NeutOneX->size() != 0)) {
       
 
         std::vector<WireHit*> vec_WireHit;
@@ -195,34 +199,41 @@ int main (int argc, char** argv) {
       }
     }
     
-
-    std::cout << "#clusters: " << totalNumberOfClusters
-              << "\t#Events: " << numberOfEvents
-              << "\t#noise: "  << totalNoise
-    << "\tMin Hits: "  << i << std::endl;
+    binning[i] = static_cast<double>(i);
+    clusters[i] = static_cast<double>(totalNumberOfClusters);
+    efficiency[i] = static_cast<double>(totalNumberOfClusters)/static_cast<double>(numberOfEvents*3);
+    
+//    std::cout << "#clusters: " << totalNumberOfClusters
+//              << "\t#Events: " << numberOfEvents
+//              << "\t#efficiency: "  << efficiency[i]
+//    << "\tMin Hits: "  << binning[i] << std::endl;
   }
+  
+  for (int i=0; i<8; ++i){
+    std::cout << binning[i] << "\t" << efficiency[i] << std::endl;
+  }
+  
+  
 
-
-
-//  TCanvas *c2 = new TCanvas();
-//  TGraph  *g2 = new TGraph (nHitTrials, x1, efficiency);
+  TCanvas *c2 = new TCanvas();
+  TGraph  *g2 = new TGraph (8, binning, efficiency);
 //  TLine   *l2 = new TLine  (6, 0, 6, 0.9              );
-//  TLegend *legend2 = new TLegend(0.52, 0.7, 0.9, 0.9  );
-//
-//  legend2->AddEntry(g2, "efficiency vs minimum number of hits");
+  TLegend *legend2 = new TLegend(0.52, 0.7, 0.9, 0.9  );
+
+  legend2->AddEntry(g2, "efficiency vs minimum number of hits");
 //  legend2->AddEntry(l2, "nominal number of hits");
-//
-//  c2->Print((OutFileName+"[").c_str());
-//  c2->SetLogy();
-//  g2->SetTitle("");
-//  g2->GetXaxis()->SetTitle("nHitsMin [#]");
-//  g2->GetYaxis()->SetTitle("Efficiency");
-//  g2->Draw("AL*");
+
+  c2->Print((OutFileName+"[").c_str());
+  c2->SetLogy();
+  g2->SetTitle("");
+  g2->GetXaxis()->SetTitle("nHitsMin [#]");
+  g2->GetYaxis()->SetTitle("Efficiency");
+  g2->Draw("AL*");
 //  l2->SetLineColor(kRed);
 //  l2->Draw();
-//  legend2->Draw();
-//  c2->Print((OutFileName).c_str());
-//  c2->Print((OutFileName+"]").c_str());
+  legend2->Draw();
+  c2->Print((OutFileName).c_str());
+  c2->Print((OutFileName+"]").c_str());
 
 }
 
