@@ -129,32 +129,32 @@ protected:
   
   virtual void Print(const bool printHit=false) {
     std::cout << "---------------------------" << std::endl;
-    std::cout << "Cluster " << std::endl;
-    std::cout << " Marley index "    << fTrueMarleyIndex << std::endl;
-    std::cout << " ENu "             << fTrueEnergy      << std::endl;
-    std::cout << " TruePos[X]: "     << fTruePosition[kX]
-              << " TruePos[Y]: "     << fTruePosition[kY]
-              << " TruePos[Z]: "     << fTruePosition[kZ]
-              << " TruePos[T]: "     << fTruePosition[kT] << std::endl;
-    std::cout << " TrueDir[X]: "     << fTrueDirection[kX]
-              << " TrueDir[Y]: "     << fTrueDirection[kY]
-              << " TrueDir[Z]: "     << fTrueDirection[kZ]
-              << " TrueDir[T]: "     << fTrueDirection[kT] << std::endl;
-    std::cout << " Position[X]: "    << fPosition[kX]
-              << " Position[Y]: "    << fPosition[kY]
-              << " Position[Z]: "    << fPosition[kZ]
-              << " Position[T]: "    << fPosition[kT] << std::endl;
-    std::cout << " Size[X]: "        << fSize[kX]
-              << " Size[Y]: "        << fSize[kY]
-              << " Size[Z]: "        << fSize[kZ]
-              << " Size[T]: "        << fSize[kT]    << std::endl;
-    std::cout << " Extent[X]: "      << fExtent[kX].first << "-" << fExtent[kX].second 
-              << " Extent[Y]: "      << fExtent[kY].first << "-" << fExtent[kY].second 
-              << " Extent[Z]: "      << fExtent[kZ].first << "-" << fExtent[kZ].second 
-              << " Extent[T]: "      << fExtent[kT].first << "-" << fExtent[kT].second << std::endl;
-    std::cout << " IsSelected "      << fIsSelected  << std::endl;
-    std::cout << " SumPeak: "        << fSumPeak     << std::endl;
-    std::cout << " APA: "            << fAPA         << std::endl;
+    std::cout << " Cluster       "   << std::endl;
+    std::cout << " Marley index  "   << fTrueMarleyIndex << std::endl;
+    std::cout << " ENu           "   << fTrueEnergy      << std::endl;
+    std::cout << " TruePos[X]:   "   << fTruePosition[kX]
+              << " TruePos[Y]:   "   << fTruePosition[kY]
+              << " TruePos[Z]:   "   << fTruePosition[kZ]
+              << " TruePos[T]:   "   << fTruePosition[kT] << std::endl;
+    std::cout << " TrueDir[X]:   "   << fTrueDirection[kX]
+              << " TrueDir[Y]:   "   << fTrueDirection[kY]
+              << " TrueDir[Z]:   "   << fTrueDirection[kZ]
+              << " TrueDir[T]:   "   << fTrueDirection[kT] << std::endl;
+    std::cout << " Position[X]:  "   << fPosition[kX]
+              << " Position[Y]:  "   << fPosition[kY]
+              << " Position[Z]:  "   << fPosition[kZ]
+              << " Position[T]:  "   << fPosition[kT] << std::endl;
+    std::cout << " Size[X]:      "   << fSize[kX]
+              << " Size[Y]:      "   << fSize[kY]
+              << " Size[Z]:      "   << fSize[kZ]
+              << " Size[T]:      "   << fSize[kT]    << std::endl;
+    std::cout << " Extent[X]:    "   << fExtent[kX].first << "-" << fExtent[kX].second
+              << " Extent[Y]:    "   << fExtent[kY].first << "-" << fExtent[kY].second
+              << " Extent[Z]:    "   << fExtent[kZ].first << "-" << fExtent[kZ].second
+              << " Extent[T]:    "   << fExtent[kT].first << "-" << fExtent[kT].second << std::endl;
+    std::cout << " IsSelected    "   << fIsSelected  << std::endl;
+    std::cout << " SumPeak:      "   << fSumPeak     << std::endl;
+    std::cout << " APA:          "   << fAPA         << std::endl;
     std::cout << " fTrueGenType: "   << fTrueGenType << std::endl;
     if (printHit)
       for (auto const& it:fHit)
