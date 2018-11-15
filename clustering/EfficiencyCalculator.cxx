@@ -22,49 +22,6 @@
 #include <iostream>
 #include <unistd.h>
 
-void OrderWireClusters( std::vector<WireCluster*> vec_WireCluster, int Index) {
-  
-  std::vector<WireCluster*> temp_VecWireCluster;
-  double first, second, third;
-  
-  if (vec_WireCluster.size() > Index && Index != 0){
-    
-    if (Index >= 1) {
-      for (int it=0; it<vec_WireCluster.size(); ++it) {
-        if (vec_WireCluster[it]->GetSumPeak() > first) {
-          first = vec_WireCluster[it]->GetSumPeak();
-        }
-      }
-    }
-    if (Index >= 2) {
-      for (int it=0; it<vec_WireCluster.size(); ++it) {
-        if (vec_WireCluster[it]->GetSumPeak() > second && vec_WireCluster[it]->GetSumPeak() < first) {
-          second = vec_WireCluster[it]->GetSumPeak();
-        }
-      }
-    }
-    if (Index >= 3) {
-      for (int it=0; it<vec_WireCluster.size(); ++it) {
-        if (vec_WireCluster[it]->GetSumPeak() > third && vec_WireCluster[it]->GetSumPeak() < second && vec_WireCluster[it]->GetSumPeak() < first){
-          third = vec_WireCluster[it]->GetSumPeak();
-        }
-      }
-    }
-    for (int i=0; i<vec_WireCluster.size(); ++i) {
-      if (vec_WireCluster[i]->GetSumPeak() == first) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
-    }
-    for (int i=0; i<vec_WireCluster.size(); ++i) {
-      if (vec_WireCluster[i]->GetSumPeak() == second) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
-    }
-    for (int i=0; i<vec_WireCluster.size(); ++i) {
-      if (vec_WireCluster[i]->GetSumPeak() == third) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
-    }
-    
-  }
-  vec_WireCluster = temp_VecWireCluster;
-  temp_VecWireCluster.clear();
-}
-
 int main (int argc, char** argv) {
   int opt;
   // Shut GetOpt error messages down (return '?'):
@@ -110,13 +67,13 @@ int main (int argc, char** argv) {
   double numEvents[1000];
   double efficiency[1000];
   
-  int numberOfFucks = 0;
-  
   double SingleNeutronEfficiencyNumerator=0;
   double SingleNeutronEfficiencyDenominator=0;
   double MultipleNeutronEfficiencyNumerator=0;
   double MultipleNeutronEfficiencyDenominator=0;
   
+  std::map<int, std::vector<int>> Indices;
+ 
   std::vector<int>      * HitView           = NULL;
   std::vector<int>      * HitChan           = NULL;
   std::vector<int>      * GenType           = NULL;
@@ -124,6 +81,9 @@ int main (int argc, char** argv) {
   std::vector<int>      * BackTrackedID     = NULL;
   std::vector<int>      * GenParticlePDG    = NULL;
   std::vector<int>      * EventIndex        = NULL;
+  std::vector<int>      * NeutOneIds        = NULL;
+  std::vector<int>      * NeutTwoIds        = NULL;
+  std::vector<int>      * NeutThreeIds      = NULL;
   std::vector<float>    * HitTime           = NULL;
   std::vector<float>    * HitSADC           = NULL;
   std::vector<float>    * HitRMS            = NULL;
@@ -142,6 +102,7 @@ int main (int argc, char** argv) {
   std::vector<double>   * NeutOneX          = NULL;
   std::vector<double>   * NeutOneY          = NULL;
   std::vector<double>   * NeutOneZ          = NULL;
+
 
   // SETTING ALL OF THE BRANCH ADDRESSES
   Tree->SetBranchAddress("NTotHits"         , &NTotHits           );
@@ -166,10 +127,15 @@ int main (int argc, char** argv) {
   Tree->SetBranchAddress("GenParticleEndX"  , &GenParticleEndX    );
   Tree->SetBranchAddress("GenParticleEndY"  , &GenParticleEndY    );
   Tree->SetBranchAddress("GenParticleEndZ"  , &GenParticleEndZ    );
-  Tree->SetBranchAddress("EventIndex"       , &EventIndex         );
   Tree->SetBranchAddress("NeutOneX"         , &NeutOneX           );
   Tree->SetBranchAddress("NeutOneY"         , &NeutOneY           );
   Tree->SetBranchAddress("NeutOneZ"         , &NeutOneZ           );
+  Tree->SetBranchAddress("EventIndex"       , &EventIndex         );
+  Tree->SetBranchAddress("NeutOneIds"       , &NeutOneIds         );
+  Tree->SetBranchAddress("NeutTwoIds"       , &NeutTwoIds         );
+  Tree->SetBranchAddress("NeutThreeIds"     , &NeutThreeIds       );
+    
+  
 //  Tree->SetBranchAddress("Index"             , &GenType           ); //
 
   // THESE ARE THE OUTPUTS I WANT TO GET FROM THE CODE
@@ -193,7 +159,7 @@ int main (int argc, char** argv) {
     clusteng.SetPositionOpt  (300);
     clusteng.SetBucketSize   (1)  ;
 
-    wiretrigger.SetNHitsMin    (5); //efficiency vs this plot, 6 is the nominal
+    wiretrigger.SetNHitsMin    (6); //efficiency vs this plot, 6 is the nominal
     wiretrigger.SetNChanMin    (2);
     wiretrigger.SetChanWidthMin(0);
     wiretrigger.SetSADCMin     (0);
@@ -204,10 +170,22 @@ int main (int argc, char** argv) {
     else             {fNEvent = Tree->GetEntries();}
 
     // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
+//    for (int CurrentEvent=185; CurrentEvent<186; ++CurrentEvent) {
     for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
       Tree->GetEntry(CurrentEvent);
       std::vector<WireHit*> vec_WireHit;
       numberOfEvents += (*EventIndex)[0];
+      
+      Indices[0] = (*NeutOneIds)  ;
+      Indices[1] = (*NeutTwoIds)  ;
+      Indices[2] = (*NeutThreeIds);
+      
+//      for (auto it : Indices) {
+//        for (auto c : it.second) {
+//          std::cout << it.first << "\t" << c << std::endl;
+//        }
+//      }
+      
       for (int j=0; j<HitView->size(); ++j) {
 
         // HERE WE NEED SOMETHING LIKE: IF THE GENPARTICLEID MATCHES THE
@@ -230,8 +208,48 @@ int main (int argc, char** argv) {
       std::vector<WireCluster*> vec_WireCluster;
       clusteng    .ClusterHits2 (vec_WireHit, vec_WireCluster);
       wiretrigger .SetIsSelected(vec_WireCluster)             ;
-      OrderWireClusters(vec_WireCluster, (*EventIndex)[0])    ;
 
+      std::vector<WireCluster*> temp_VecWireCluster;
+      double first, second, third;
+      
+      if (vec_WireCluster.size() > (*EventIndex)[0] && (*EventIndex)[0] != 0){
+        
+        if ((*EventIndex)[0] >= 1) {
+          for (int it=0; it<vec_WireCluster.size(); ++it) {
+            if (vec_WireCluster[it]->GetSumPeak() > first) {
+              first = vec_WireCluster[it]->GetSumPeak();
+            }
+          }
+        }
+        if ((*EventIndex)[0] >= 2) {
+          for (int it=0; it<vec_WireCluster.size(); ++it) {
+            if (vec_WireCluster[it]->GetSumPeak() > second && vec_WireCluster[it]->GetSumPeak() < first) {
+              second = vec_WireCluster[it]->GetSumPeak();
+            }
+          }
+        }
+        if ((*EventIndex)[0] >= 3) {
+          for (int it=0; it<vec_WireCluster.size(); ++it) {
+            if (vec_WireCluster[it]->GetSumPeak() > third && vec_WireCluster[it]->GetSumPeak() < second && vec_WireCluster[it]->GetSumPeak() < first){
+              third = vec_WireCluster[it]->GetSumPeak();
+            }
+          }
+        }
+        for (int i=0; i<vec_WireCluster.size(); ++i) {
+          if (vec_WireCluster[i]->GetSumPeak() == first) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+        }
+        for (int i=0; i<vec_WireCluster.size(); ++i) {
+          if (vec_WireCluster[i]->GetSumPeak() == second) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+        }
+        for (int i=0; i<vec_WireCluster.size(); ++i) {
+          if (vec_WireCluster[i]->GetSumPeak() == third) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+        }
+        
+      }
+      vec_WireCluster = temp_VecWireCluster;
+      temp_VecWireCluster.clear();
+      first  = 0; second = 0; third  = 0;
+      
       std::map<int, bool> selected_cluster;
       for (int c=0; c<(*EventIndex)[0]; ++c) {
         selected_cluster[c] = false;
@@ -244,7 +262,6 @@ int main (int argc, char** argv) {
             selected_cluster[clust->GetMarleyIndex()] = true;
             selected = true;
             ++ncluster;
-            std::cout << "The current event is: " << CurrentEvent << std::endl;
           }
           else {
             ++nnoisecluster;
@@ -252,6 +269,10 @@ int main (int argc, char** argv) {
         }
       }
 
+      //////////////////////////////////////
+      //      CALCULATE ME SOME SHIT      //
+      //////////////////////////////////////
+      
       int NumberOfNeutronsDetected = 0;
       for (auto const& it: selected_cluster) {
         if (it.second) {
@@ -260,13 +281,13 @@ int main (int argc, char** argv) {
         }
         SingleNeutronEfficiencyDenominator++;
       }
-      
-      
+
       MultipleNeutronEfficiencyDenominator++;
-      if (NumberOfNeutronsDetected == selected_cluster.size()) {
+      if (NumberOfNeutronsDetected == selected_cluster.size() && selected_cluster.size() != 0) {
         MultipleNeutronEfficiencyNumerator++;
       }
  
+      
       totalNumberOfClusters+=ncluster;
       totalNoise+=nnoisecluster;
 //     Calcuklate the efficiency
@@ -290,6 +311,7 @@ int main (int argc, char** argv) {
   std::cout << SingleNeutronEfficiencyNumerator << "\t\t\t\t" << MultipleNeutronEfficiencyNumerator << std::endl;
   std::cout << "--\t\t\t\t--" << std::endl;
   std::cout << SingleNeutronEfficiencyDenominator << "\t\t\t\t" << MultipleNeutronEfficiencyDenominator << std::endl;
+  std::cout << "-----------------------------------------------------------------------" << std::endl;
   std::cout << SingleNeutronEfficiencyNumerator/SingleNeutronEfficiencyDenominator
             << "\t\t\t" << MultipleNeutronEfficiencyNumerator/MultipleNeutronEfficiencyDenominator << std::endl;
   
@@ -298,11 +320,11 @@ int main (int argc, char** argv) {
   
   
   
-//  std::cout << "Event\tnClustFound\tnEventsTrue\teff" << std::endl;
-//  std::cout << "----------------------------------------------------" << std::endl;
-//  for (int i=0; i<1000; i++){
-//    std::cout << binning[i] << "\t" << clusters[i] << "\t\t" << numEvents[i] << "\t\t" << efficiency[i] << std::endl;
-//  }
+  std::cout << "Event\tnClustFound\tnEventsTrue\teff" << std::endl;
+  std::cout << "----------------------------------------------------" << std::endl;
+  for (int i=0; i<1000; i++){
+    std::cout << binning[i] << "\t" << clusters[i] << "\t\t" << numEvents[i] << "\t\t" << efficiency[i] << std::endl;
+  }
   
   
 //  TCanvas *c1 = new TCanvas("c1");
