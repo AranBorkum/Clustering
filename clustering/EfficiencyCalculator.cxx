@@ -22,6 +22,49 @@
 #include <iostream>
 #include <unistd.h>
 
+void OrderWireClusters( std::vector<WireCluster*> vec_WireCluster, int Index) {
+  
+  std::vector<WireCluster*> temp_VecWireCluster;
+  double first, second, third;
+  
+  if (vec_WireCluster.size() > Index && Index != 0){
+    
+    if (Index >= 1) {
+      for (int it=0; it<vec_WireCluster.size(); ++it) {
+        if (vec_WireCluster[it]->GetSumPeak() > first) {
+          first = vec_WireCluster[it]->GetSumPeak();
+        }
+      }
+    }
+    if (Index >= 2) {
+      for (int it=0; it<vec_WireCluster.size(); ++it) {
+        if (vec_WireCluster[it]->GetSumPeak() > second && vec_WireCluster[it]->GetSumPeak() < first) {
+          second = vec_WireCluster[it]->GetSumPeak();
+        }
+      }
+    }
+    if (Index >= 3) {
+      for (int it=0; it<vec_WireCluster.size(); ++it) {
+        if (vec_WireCluster[it]->GetSumPeak() > third && vec_WireCluster[it]->GetSumPeak() < second && vec_WireCluster[it]->GetSumPeak() < first){
+          third = vec_WireCluster[it]->GetSumPeak();
+        }
+      }
+    }
+    for (int i=0; i<vec_WireCluster.size(); ++i) {
+      if (vec_WireCluster[i]->GetSumPeak() == first) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+    }
+    for (int i=0; i<vec_WireCluster.size(); ++i) {
+      if (vec_WireCluster[i]->GetSumPeak() == second) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+    }
+    for (int i=0; i<vec_WireCluster.size(); ++i) {
+      if (vec_WireCluster[i]->GetSumPeak() == third) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+    }
+    
+  }
+  vec_WireCluster = temp_VecWireCluster;
+  temp_VecWireCluster.clear();
+}
+
 int main (int argc, char** argv) {
   int opt;
   // Shut GetOpt error messages down (return '?'):
@@ -66,6 +109,13 @@ int main (int argc, char** argv) {
   double clusters[1000];
   double numEvents[1000];
   double efficiency[1000];
+  
+  int numberOfFucks = 0;
+  
+  double SingleNeutronEfficiencyNumerator=0;
+  double SingleNeutronEfficiencyDenominator=0;
+  double MultipleNeutronEfficiencyNumerator=0;
+  double MultipleNeutronEfficiencyDenominator=0;
   
   std::vector<int>      * HitView           = NULL;
   std::vector<int>      * HitChan           = NULL;
@@ -143,7 +193,7 @@ int main (int argc, char** argv) {
     clusteng.SetPositionOpt  (300);
     clusteng.SetBucketSize   (1)  ;
 
-    wiretrigger.SetNHitsMin    (3); //efficiency vs this plot, 6 is the nominal
+    wiretrigger.SetNHitsMin    (5); //efficiency vs this plot, 6 is the nominal
     wiretrigger.SetNChanMin    (2);
     wiretrigger.SetChanWidthMin(0);
     wiretrigger.SetSADCMin     (0);
@@ -156,7 +206,6 @@ int main (int argc, char** argv) {
     // CALCULATING OUTPUT VALUES (I THINK. THIS CODE IS F**KING COMPLICATED)
     for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
       Tree->GetEntry(CurrentEvent);
-      
       std::vector<WireHit*> vec_WireHit;
       numberOfEvents += (*EventIndex)[0];
       for (int j=0; j<HitView->size(); ++j) {
@@ -177,22 +226,25 @@ int main (int argc, char** argv) {
       int  ncluster      = 0    ;
       int  nnoisecluster = 0    ;
 
+
       std::vector<WireCluster*> vec_WireCluster;
       clusteng    .ClusterHits2 (vec_WireHit, vec_WireCluster);
       wiretrigger .SetIsSelected(vec_WireCluster)             ;
+      OrderWireClusters(vec_WireCluster, (*EventIndex)[0])    ;
 
+      std::map<int, bool> selected_cluster;
+      for (int c=0; c<(*EventIndex)[0]; ++c) {
+        selected_cluster[c] = false;
+      }
 
-//      for (int i=0; i<vec_WireCluster.size(); ++i) {
-//        vec_WireCluster[i]->Print();
-//      }
-      
-      
       for (int c=0; c<vec_WireCluster.size(); ++c) {
         WireCluster* clust = vec_WireCluster[c];
         if (clust->GetIsSelected()) {
           if (clust->GetType()){
+            selected_cluster[clust->GetMarleyIndex()] = true;
             selected = true;
             ++ncluster;
+            std::cout << "The current event is: " << CurrentEvent << std::endl;
           }
           else {
             ++nnoisecluster;
@@ -200,14 +252,27 @@ int main (int argc, char** argv) {
         }
       }
 
+      int NumberOfNeutronsDetected = 0;
+      for (auto const& it: selected_cluster) {
+        if (it.second) {
+          SingleNeutronEfficiencyNumerator++;
+          NumberOfNeutronsDetected++;
+        }
+        SingleNeutronEfficiencyDenominator++;
+      }
+      
+      
+      MultipleNeutronEfficiencyDenominator++;
+      if (NumberOfNeutronsDetected == selected_cluster.size()) {
+        MultipleNeutronEfficiencyNumerator++;
+      }
+ 
       totalNumberOfClusters+=ncluster;
       totalNoise+=nnoisecluster;
-  // Calcuklate the efficiency
-  // and fill the hist and the tProfile
-  // th2d_nClusterVSnNeutron ->Fill(3, ncluster);
-  // tprof_nClusterVSnNeutron->Fill(3, ncluster);
-      
-    
+//     Calcuklate the efficiency
+//     and fill the hist and the tProfile
+//     th2d_nClusterVSnNeutron ->Fill(3, ncluster);
+//     tprof_nClusterVSnNeutron->Fill(3, ncluster);
     
     binning[CurrentEvent]    = static_cast<double>(CurrentEvent);
     clusters[CurrentEvent]   = static_cast<double>(totalNumberOfClusters);
@@ -219,30 +284,45 @@ int main (int argc, char** argv) {
 
     }
   }
-//  std::cout << "Event\tnClust\tnEvents\teff" << std::endl;
+  
+  std::cout << "\nSingle Neutron Efficiency: \tMultiple Neutron Efficiency: " << std::endl;
+  std::cout << "-----------------------------------------------------------------------" << std::endl;
+  std::cout << SingleNeutronEfficiencyNumerator << "\t\t\t\t" << MultipleNeutronEfficiencyNumerator << std::endl;
+  std::cout << "--\t\t\t\t--" << std::endl;
+  std::cout << SingleNeutronEfficiencyDenominator << "\t\t\t\t" << MultipleNeutronEfficiencyDenominator << std::endl;
+  std::cout << SingleNeutronEfficiencyNumerator/SingleNeutronEfficiencyDenominator
+            << "\t\t\t" << MultipleNeutronEfficiencyNumerator/MultipleNeutronEfficiencyDenominator << std::endl;
+  
+  
+  
+  
+  
+  
+//  std::cout << "Event\tnClustFound\tnEventsTrue\teff" << std::endl;
 //  std::cout << "----------------------------------------------------" << std::endl;
 //  for (int i=0; i<1000; i++){
-//    std::cout << binning[i] << "\t" << clusters[i] << "\t" << numEvents[i] << "\t" << efficiency[i] << std::endl;
+//    std::cout << binning[i] << "\t" << clusters[i] << "\t\t" << numEvents[i] << "\t\t" << efficiency[i] << std::endl;
 //  }
   
   
-  TCanvas *c1 = new TCanvas("c1");
-  TLegend *l1 = new TLegend(0.1, 0.78, 0.4, 0.9);
-  TGraph  *g1 = new TGraph (1000, binning, clusters);
-  TGraph  *g2 = new TGraph (1000, binning, efficiency);
-  TGraph  *g3 = new TGraph (1000, binning, numEvents);
-  c1->Print((OutFileName+"[").c_str());
-  g1->SetTitle("");
-  g1->GetXaxis()->SetTitle("Sample number [#]");
-  g1->GetYaxis()->SetTitle("nClusters (black); 100xefficiency (red)");
-  g1->Draw();
-  g2->SetLineColor(kRed);
-  g2->Draw("SAME");
-  l1->AddEntry(g1, "Number of clusters vs number of samples tested");
-  l1->AddEntry(g2, "Efficiency of clusteringvs number of samples tested (x100)");
-  l1->Draw();
-  c1->Print((OutFileName).c_str());
-  c1->Print((OutFileName+"]").c_str());
+//  TCanvas *c1 = new TCanvas("c1");
+//  TLegend *l1 = new TLegend(0.4, 0.78, 0.7, 0.9);
+//  TGraph  *g1 = new TGraph (1000, binning, clusters);
+//  TGraph  *g2 = new TGraph (1000, binning, efficiency);
+//  TGraph  *g3 = new TGraph (1000, binning, numEvents);
+//  c1->Print((OutFileName+"[").c_str());
+//  g1->SetTitle("");
+//  g1->GetXaxis()->SetTitle("Sample number [#]");
+//  g1->GetYaxis()->SetTitle("nClusters (black); efficiency (red)");
+//  g1->Draw();
+//  g2->SetLineColor(kRed);
+//  g2->Draw("SAME");
+//  l1->SetHeader("nHitsMin = 6", "L");
+//  l1->AddEntry(g1, "Number of clusters vs number of samples tested");
+//  l1->AddEntry(g2, "Efficiency of clusteringvs number of samples tested (%)");
+//  l1->Draw();
+//  c1->Print((OutFileName).c_str());
+//  c1->Print((OutFileName+"]").c_str());
   
 
 }
