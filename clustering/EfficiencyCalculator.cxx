@@ -28,11 +28,11 @@ int main (int argc, char** argv) {
   extern char *optarg;
   extern int  optopt;
 
-  std::string InFileName ="/Users/aranborkum/Docterate/DataSets/TriNeutronBackground_hist.root";
+  std::string InFileName ="/Users/aranborkum/Docterate/DataSets/100_Neutron_background.root";
   std::string OutFileName="Output_1.pdf";
   std::string InTreeName ="trineutronbackground/TriNeutron";
   
-  int nEvent=1000;
+  int nEvent=100;
   int nHitTrials=1;
   while ( (opt = getopt(argc, argv, "i:o:n:t:l:")) != -1 ) {  // for each option...
     switch ( opt ) {
@@ -80,7 +80,6 @@ int main (int argc, char** argv) {
   
   std::map<int, std::vector<int>> Indices;
   std::vector<int>      * ThisNeutronID     = NULL;
- 
   std::vector<int>      * HitView           = NULL;
   std::vector<int>      * HitChan           = NULL;
   std::vector<int>      * GenType           = NULL;
@@ -89,9 +88,9 @@ int main (int argc, char** argv) {
   std::vector<int>      * GenParticlePDG    = NULL;
   std::vector<int>      * EventIndex        = NULL;
   std::vector<int>      * NeutronIndex      = NULL;
-  std::vector<int>      * NeutOneIds        = NULL;
-  std::vector<int>      * NeutTwoIds        = NULL;
-  std::vector<int>      * NeutThreeIds      = NULL;
+//  std::vector<int>      * NeutOneIds        = NULL;
+//  std::vector<int>      * NeutTwoIds        = NULL;
+//  std::vector<int>      * NeutThreeIds      = NULL;
   std::vector<bool>     * ThisNeutronStaysInTheDetector = NULL;
   std::vector<bool>     * ThisNeutronCapture = NULL;
   std::vector<float>    * HitTime           = NULL;
@@ -109,9 +108,9 @@ int main (int argc, char** argv) {
   std::vector<double>   * GenParticleEndX   = NULL;
   std::vector<double>   * GenParticleEndY   = NULL;
   std::vector<double>   * GenParticleEndZ   = NULL;
-  std::vector<double>   * NeutOneZ          = NULL;
-  std::vector<double>   * NeutTwoZ          = NULL;
-  std::vector<double>   * NeutThreeZ        = NULL;
+//  std::vector<double>   * NeutOneZ          = NULL;
+//  std::vector<double>   * NeutTwoZ          = NULL;
+//  std::vector<double>   * NeutThreeZ        = NULL;
 
   // SETTING ALL OF THE BRANCH ADDRESSES
   Tree->SetBranchAddress("NTotHits"         , &NTotHits           );
@@ -136,13 +135,13 @@ int main (int argc, char** argv) {
   Tree->SetBranchAddress("GenParticleEndX"  , &GenParticleEndX    );
   Tree->SetBranchAddress("GenParticleEndY"  , &GenParticleEndY    );
   Tree->SetBranchAddress("GenParticleEndZ"  , &GenParticleEndZ    );
-  Tree->SetBranchAddress("NeutOneZ"         , &NeutOneZ           );
-  Tree->SetBranchAddress("NeutTwoZ"         , &NeutTwoZ           );
-  Tree->SetBranchAddress("NeutThreeZ"       , &NeutThreeZ         );
+//  Tree->SetBranchAddress("NeutOneZ"         , &NeutOneZ           );
+//  Tree->SetBranchAddress("NeutTwoZ"         , &NeutTwoZ           );
+//  Tree->SetBranchAddress("NeutThreeZ"       , &NeutThreeZ         );
   Tree->SetBranchAddress("EventIndex"       , &EventIndex         );
-  Tree->SetBranchAddress("NeutOneIds"       , &NeutOneIds         );
-  Tree->SetBranchAddress("NeutTwoIds"       , &NeutTwoIds         );
-  Tree->SetBranchAddress("NeutThreeIds"     , &NeutThreeIds       );
+//  Tree->SetBranchAddress("NeutOneIds"       , &NeutOneIds         );
+//  Tree->SetBranchAddress("NeutTwoIds"       , &NeutTwoIds         );
+//  Tree->SetBranchAddress("NeutThreeIds"     , &NeutThreeIds       );
   Tree->SetBranchAddress("NeutronIndex"     , &NeutronIndex       );
   Tree->SetBranchAddress("ThisNeutronStaysInTheDetector", &ThisNeutronStaysInTheDetector);
   Tree->SetBranchAddress("ThisNeutronCapture", &ThisNeutronCapture);
@@ -181,20 +180,10 @@ int main (int argc, char** argv) {
     // INITIATION OF THE MAIN LOOP OVER ALL EVENTS IN THE TTREE
 //    for (int CurrentEvent=185; CurrentEvent<186; ++CurrentEvent) {
     for (int CurrentEvent=0; CurrentEvent<fNEvent; ++CurrentEvent) {
-//      std::cout << "--------" << std::endl;
-//      std::cout << "Event " << CurrentEvent << std::endl;
       Tree->GetEntry(CurrentEvent);
       
-      if (NeutOneZ->size()   != 0) {n1+=1;}
-      if (NeutTwoZ->size()   != 0) {n2+=1;}
-      if (NeutThreeZ->size() != 0) {n3+=1;}
-      
       std::vector<WireHit*> vec_WireHit;
-      numberOfEvents += (*EventIndex)[0];
-      
-      Indices[0] = (*NeutOneIds)  ;
-      Indices[1] = (*NeutTwoIds)  ;
-      Indices[2] = (*NeutThreeIds);
+
       
       // FILLING A VECTOR WITH WIREHIT OBJECTS
       for (int j=0; j<HitView->size(); ++j) {
@@ -230,46 +219,46 @@ int main (int argc, char** argv) {
       wiretrigger .SetIsSelected(vec_WireCluster);
 
 
-      std::vector<WireCluster*> temp_VecWireCluster;
-      double first, second, third;
-      if (vec_WireCluster.size() > (*EventIndex)[0] && (*EventIndex)[0] != 0){
+//      std::vector<WireCluster*> temp_VecWireCluster;
+//      double first, second, third;
+//      if (vec_WireCluster.size() > (*EventIndex)[0] && (*EventIndex)[0] != 0){
+//
+//        if ((*EventIndex)[0] >= 1) {
+//          for (int it=0; it<vec_WireCluster.size(); ++it) {
+//            if (vec_WireCluster[it]->GetSumPeak() > first) {
+//              first = vec_WireCluster[it]->GetSumPeak();
+//            }
+//          }
+//        }
+//        if ((*EventIndex)[0] >= 2) {
+//          for (int it=0; it<vec_WireCluster.size(); ++it) {
+//            if (vec_WireCluster[it]->GetSumPeak() > second && vec_WireCluster[it]->GetSumPeak() < first) {
+//              second = vec_WireCluster[it]->GetSumPeak();
+//            }
+//          }
+//        }
+//        if ((*EventIndex)[0] >= 3) {
+//          for (int it=0; it<vec_WireCluster.size(); ++it) {
+//            if (vec_WireCluster[it]->GetSumPeak() > third && vec_WireCluster[it]->GetSumPeak() < second && vec_WireCluster[it]->GetSumPeak() < first){
+//              third = vec_WireCluster[it]->GetSumPeak();
+//            }
+//          }
+//        }
+//        for (int i=0; i<vec_WireCluster.size(); ++i) {
+//          if (vec_WireCluster[i]->GetSumPeak() == first) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+//        }
+//        for (int i=0; i<vec_WireCluster.size(); ++i) {
+//          if (vec_WireCluster[i]->GetSumPeak() == second) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+//        }
+//        for (int i=0; i<vec_WireCluster.size(); ++i) {
+//          if (vec_WireCluster[i]->GetSumPeak() == third) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
+//        }
+//
+//      }
 
-        if ((*EventIndex)[0] >= 1) {
-          for (int it=0; it<vec_WireCluster.size(); ++it) {
-            if (vec_WireCluster[it]->GetSumPeak() > first) {
-              first = vec_WireCluster[it]->GetSumPeak();
-            }
-          }
-        }
-        if ((*EventIndex)[0] >= 2) {
-          for (int it=0; it<vec_WireCluster.size(); ++it) {
-            if (vec_WireCluster[it]->GetSumPeak() > second && vec_WireCluster[it]->GetSumPeak() < first) {
-              second = vec_WireCluster[it]->GetSumPeak();
-            }
-          }
-        }
-        if ((*EventIndex)[0] >= 3) {
-          for (int it=0; it<vec_WireCluster.size(); ++it) {
-            if (vec_WireCluster[it]->GetSumPeak() > third && vec_WireCluster[it]->GetSumPeak() < second && vec_WireCluster[it]->GetSumPeak() < first){
-              third = vec_WireCluster[it]->GetSumPeak();
-            }
-          }
-        }
-        for (int i=0; i<vec_WireCluster.size(); ++i) {
-          if (vec_WireCluster[i]->GetSumPeak() == first) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
-        }
-        for (int i=0; i<vec_WireCluster.size(); ++i) {
-          if (vec_WireCluster[i]->GetSumPeak() == second) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
-        }
-        for (int i=0; i<vec_WireCluster.size(); ++i) {
-          if (vec_WireCluster[i]->GetSumPeak() == third) { temp_VecWireCluster.push_back(vec_WireCluster[i]); }
-        }
-
-      }
-
-      vec_WireCluster = temp_VecWireCluster;
-      temp_VecWireCluster.clear();
-      first  = 0; second = 0; third  = 0;
+//      vec_WireCluster = temp_VecWireCluster;
+//      temp_VecWireCluster.clear();
+//      first  = 0; second = 0; third  = 0;
       
       std::map<int, bool> selected_cluster;
       for (int c=0; c<NeutronIndex->size(); ++c) {
@@ -313,7 +302,7 @@ int main (int argc, char** argv) {
       // NEUTRONS DETECTED, AS CALCULATED PREVIOUSLY, IS EQUAL TO THE //
       // LENGTH OF THE CLUSTER MAP AND PROVIDED THE CLUSTER MAP IS    //
       // NOT OF LENGTH ZERO, THE NUMBERATOR OF THE MULTIPLE NEUTRON   //
-      // CLUSTERING EFFICIENCY GOES UP BY ONE.
+      // CLUSTERING EFFICIENCY GOES UP BY ONE.                        //
       //////////////////////////////////////////////////////////////////
       
       
@@ -332,10 +321,10 @@ int main (int argc, char** argv) {
             DetectedNeutron[hit->GetMarleyIndex()] = true;
           }
       }
-      if (DetectedNeutron.size() != 3){
-        std::cout << "size " << DetectedNeutron.size() << " " << ThisNeutronID->size() << std::endl;
-        exit(1);
-      }
+//      if (DetectedNeutron.size() != 3){
+//        std::cout << "size " << DetectedNeutron.size() << " " << ThisNeutronID->size() << std::endl;
+//        exit(1);
+//      }
       
       for (auto const& it: DetectedNeutron) {
         if (it.second) {
@@ -343,10 +332,11 @@ int main (int argc, char** argv) {
           NumberOfNeutronsDetected++;
         }
         SingleNeutronEfficiencyDenominator++;
-
+      }
+      if (NumberOfNeutronsDetected != 0) {
+        MultipleNeutronEfficiencyDenominator++;
       }
 
-      MultipleNeutronEfficiencyDenominator++;
       if (NumberOfNeutronsDetected == DetectedNeutron.size()) {
         MultipleNeutronEfficiencyNumerator++;
       }
